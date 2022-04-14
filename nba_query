@@ -1,0 +1,419 @@
+--setting all databasese (for convenience)
+select stuff(player,charindex('\',player),len(player),'') as player_name,*
+from [dbo].[advanced_shooting]
+
+
+select stuff(player,charindex('\',player),len(player),'') as player_name,*
+from [dbo].[advanced]
+
+
+select stuff(player,charindex('\',player),len(player),'') as player_name,*
+from [dbo].[per_game]
+
+
+select stuff(player,charindex('\',player),len(player),'') as player_name,*
+from [dbo].[play_by_play]
+
+
+select stuff(player,charindex('\',player),len(player),'') as player_name,*
+from [dbo].[totals]
+
+
+select stuff(player,charindex('\',player),len(player),'') as player_name,*
+from [dbo].[shooting]
+
+
+select *
+from [dbo].[teams]
+
+
+--who is the player who scored most PTS(per game)
+
+select top 20 stuff(player,charindex('\',player),len(player),'') as player_name,
+		Pos,
+		age,
+		tm,
+		g,
+		mp,
+		PTS
+from [dbo].[per_game]
+where g > 50
+order by PTS desc
+
+--who is the player who scored most PTS (total)
+
+select top 20 stuff(player,charindex('\',player),len(player),'') as player_name,
+		Pos,
+		age,
+		tm,
+		g,
+		mp,
+		PTS
+from [dbo].[totals]
+order by PTS desc
+
+--highest points average by position, and the player who did it
+
+with "PTS-POS" as
+(
+select stuff(player,charindex('\',player),len(player),'') as player_name,
+		pos,
+		pts,
+		dense_rank() over(partition by pos order by pts desc) as pts_rnk
+from [dbo].[per_game]
+)
+
+select player_name,pos,pts
+from "PTS-POS"
+where pts_rnk = 1 and (pos like '__' or pos like '_')
+
+
+
+--who is the player that passed most AST(per game) - for players that played at least 50 games
+
+
+select top 20 stuff(player,charindex('\',player),len(player),'') as player_name,
+		Pos,
+		age,
+		tm,
+		g,
+		mp,
+		AST
+from [dbo].[per_game]
+where g > 50
+order by AST desc
+
+--who is the player that passed most AST (total) - for players that played at least 50 games
+
+
+select top 20 stuff(player,charindex('\',player),len(player),'') as player_name,
+		Pos,
+		age,
+		tm,
+		g,
+		mp,
+		AST
+from [dbo].[totals]
+where g > 50
+order by AST desc
+
+
+--who is the player that collected most REB (per game) - for players that played at least 50 games
+
+
+select top 20 stuff(player,charindex('\',player),len(player),'') as player_name,
+		Pos,
+		age,
+		tm,
+		g,
+		mp,
+		TRB
+from [dbo].[per_game]
+where g > 50
+order by TRB desc
+
+--who is the player that collected most REB (total) - for players that played at least 50 games
+
+select top 20 stuff(player,charindex('\',player),len(player),'') as player_name,
+		Pos,
+		age,
+		tm,
+		g,
+		mp,
+		TRB
+from [dbo].[totals]
+where g > 50
+order by TRB desc
+
+--who has the greatest 3 points percentage? (overall) - minimum 50 attempts
+
+select top 20 stuff(player,charindex('\',player),len(player),'') as player_name,
+		Pos,
+		age,
+		tm,
+		g,
+		mp,
+		"3p",
+		"3pa",
+		"3p%"
+from [dbo].[totals]
+where "3pa" > 50
+order by "3p%" desc
+
+--who has the greatest 3 points percentage? (per game)  minimum 1.5 attempts per game
+
+select top 20 stuff(player,charindex('\',player),len(player),'') as player_name,
+		Pos,
+		age,
+		tm,
+		g,
+		mp,
+		"3p",
+		"3pa",
+		"3p%"
+from [dbo].[per_game]
+where "3pa" > 1.5
+order by "3p%" desc
+
+--how many double figures players each team had
+
+select tm,
+		count(*) as num_of_dbl_fgr_per_game
+from [dbo].[per_game]
+where PTS >= 10 and tm <> 'TOT'
+group by tm
+order by count(*) desc
+
+--who are the players that scored above 25 PTS per game?
+
+select stuff(player,charindex('\',player),len(player),'') as player_name,
+		tm,
+		PTS
+from [dbo].[per_game]
+where PTS >= 25 and tm <> 'TOT'
+order by pts desc
+
+--steph curry
+select *
+from(select stuff(a.player,charindex('\',a.player),len(a.player),'') as player_name,
+		a."3p" as "3p_per_game",
+		a."3pa" as "3p_attempts_per_game",
+		a."3p%" as "3p_%_per_game",
+		b."3p" as "3p_total",
+		b."3pa" as "3p_attempts_total",
+		b."3p%" as "3p_%_total",
+		dense_rank() over(order by a."3p%" desc) as rank_per_game,
+		dense_rank() over(order by b."3p%" desc) as rank_total
+	from [dbo].[per_game] a join [dbo].[totals] b on a.player  = b.player
+	where b."3pa" > 50) as sub
+order by rank_per_game
+
+--who are the players that played all games during the regular season?
+
+select stuff(t.player,charindex('\',t.player),len(t.player),'') as player_name,
+		t.g,
+		p.mp
+ from [dbo].[totals] t join [dbo].[per_game] p on t.player = p.player
+ where t.g in (select max(g)
+				from [dbo].[totals])
+
+--who is the player that played the highest amount of minutes during the regular season?
+
+select stuff(player,charindex('\',player),len(player),'') as player_name,
+		g,
+		mp
+from [dbo].[totals]
+where mp in (select max(mp)
+			from [dbo].[totals])
+
+-- how many players played more then 1 team this season(being traded)?
+
+with more_then_one_team as
+(
+select rk,
+		stuff(player,charindex('\',player),len(player),'') as player_name,
+		tm,
+		ROW_NUMBER() over(partition by stuff(player,charindex('\',player),len(player),'') order by rk) as team_rnk
+from [dbo].[totals]
+where tm <> 'TOT'
+),
+
+counting_players as
+(
+select team_rnk,
+		count(*) as no_of_players
+from more_then_one_team
+where team_rnk <> 1
+group by team_rnk
+)
+
+select no_of_players , 
+		case when team_rnk = 4 then 'traded three times'
+			when team_rnk = 3 then 'traded twice'
+			else 'traded once' end as status
+from counting_players
+
+--comparison between players who got traded - before and after the trade
+
+with cte as
+(
+select  a.rk,
+		stuff(a.player,charindex('\',a.player),len(a.player),'') as player_name,
+		a.tm as prev_tm,
+		b.tm as curr_tm,
+		a.g as prev_g_played,
+		b.g as curr_g_played,
+		a.mp as prev_mp,
+		b.mp as curr_mp,
+		a.pts as prev_pts,
+		b.pts as curr_pts,
+		a."FG%" as prev_FG,
+		b."FG%" as curr_FG,
+		a."3p%" as "prev_3_%",
+		b."3p%" as "curr_3_%",
+		a.ast as prev_ast,
+		b.ast as curr_ast,
+		a.trb as prev_reb,
+		b.trb as curr_reb,
+		a.tov as prev_tov,
+		b.tov as curr_tov,
+		row_number() over(partition by stuff(a.player,charindex('\',a.player),len(a.player),'') order by a.rk) as rnk
+from [dbo].[per_game] a join [dbo].[per_game] b on a.player = b.player and a.tm <> b.tm
+where a.tm <> 'TOT' and b.tm <> 'TOT'
+)
+
+select *
+from cte 
+where rnk = 2 and prev_pts <= curr_pts and prev_FG <= curr_FG and  prev_ast <= curr_ast and prev_reb <= curr_reb
+
+--worst and best +/- on court (per 100 possessions)
+
+with players as
+(
+select 	stuff(player,charindex('\',player),len(player),'') as player_name,
+		pos,
+		oncourt,
+		dense_rank() over(partition by pos order by oncourt desc) as "rnk_+/-_best",
+		dense_rank() over(partition by pos order by oncourt ) as "rnk_+/-_worst"
+from [dbo].[play_by_play]
+where g > 10 and mp > 400
+)
+
+select *
+from players
+where "rnk_+/-_best" <= 3 or "rnk_+/-_worst" <= 3
+
+-- players who played only at 1 position, and which position is most monotonous
+
+with single_position as 
+(
+select rk,stuff(player,charindex('\',player),len(player),'') as player_name,
+		case when "PG%" = 1 then 'PG only'
+			when "SG%" = 1 then 'SG only'
+			when "SF%" = 1 then 'SF only'
+			when "PF%" = 1 then 'PF only'
+			else 'C only' end as pos
+from [dbo].[play_by_play]
+where ("PG%" = 1 or "SG%" = 1 or "SF%" = 1 or "PF%" = 1 or "C%" = 1) and g > 10
+)
+select pos,
+		count(*) as cnt,
+		round(cast(count(*) as float) / sum(count(*)) over() * 100,2) as percentage_of_all
+from single_position
+group by pos
+
+--the highest number of and1 moves
+
+with and1 as
+(
+select stuff(a.player,charindex('\',a.player),len(a.player),'') as player_name,
+		and1,
+		dense_rank() over(order by and1 desc) as rnk_and1,
+		b.FGA
+from [dbo].[play_by_play] a join [dbo].[totals] b on a.player = b.player and a.tm = b.tm
+)
+
+select player_name,and1,round(cast(and1 as float)/ FGA*100,2) as and1_chance
+from and1 
+where rnk_and1 <= 10
+
+--who are the top5 players that other players made the mpst points from their assists
+
+with top5_PGA as
+(
+select stuff(a.player,charindex('\',a.player),len(a.player),'') as player_name,
+		PGA,
+		dense_rank() over(order by PGA desc) as PGA_rnk
+from [dbo].[play_by_play] a 
+)
+
+select *
+from top5_PGA
+where PGA_rnk <= 10
+
+--best scorer per age
+with best_scorer_per_age as
+(
+select stuff(player,charindex('\',player),len(player),'') as player_name,
+		age,
+		PTS,
+		dense_rank() over(partition by age order by pts desc) as pts_rnk
+from [dbo].[per_game]
+)
+
+select player_name,age,PTS
+from best_scorer_per_age
+where pts_rnk = 1
+
+--which team had the most OT?
+
+select mp,
+		tm,
+		nickname,
+		(mp - 82*48*5) as OT_minutes,
+		(mp - 82*48*5) / (5*5) as total_OT
+from [dbo].[teams]
+where category = 'Team'
+order by total_ot desc
+
+--which team scored the most
+with highest_pts as
+(
+select	category,G,tm,nickname,pts,RANK() over(partition by category order by pts desc) as pts_rnk, round(cast(pts as float) / G ,2) as pts_per_game from [dbo].[teams] where category ='Team'
+union
+select	category,G,tm,nickname,pts,RANK() over(partition by category order by pts) as pts_rnk, round(cast(pts as float) / G ,2) as pts_per_game from [dbo].[teams] where category ='Opponent'
+)
+
+select *
+from highest_pts
+where pts_rnk <= 5
+order by category,pts_rnk
+
+--top 3 points teams (by amount and by field goals)
+
+with "3p_rnk" as
+(
+select tm,
+		nickname,
+		"3P",
+		round(cast("3P" as float) / "3PA" *100,2) as "3P_percentage",
+		rank() over(order by "3P" desc) as "3p_rnk",
+		rank() over(order by round(cast("3P" as float) / "3PA" *100,2) desc) as "3p_percentage_rnk"
+from [dbo].[teams]
+where category = 'Team'
+)
+
+select 
+		tm,nickname,"3P","3P_percentage",
+		case when "3p_percentage_rnk" = 1 then 'highest 3FG%' when "3p_rnk" = 1 then  'highest 3p made' end as status
+from "3p_rnk"
+where "3p_rnk" = 1 or "3p_percentage_rnk" = 1
+
+--who is the player that had the most free throws attempts? option 1
+
+select stuff(player,charindex('\',player),len(player),'') as player_name,
+		FTA
+from [dbo].[totals]
+where FTA in (select max(FTA)
+				from [dbo].[totals])
+
+--who is the player that had the most free throws attempts? option 1
+select stuff(player,charindex('\',player),len(player),'') as player_name,
+		FTA,
+		dense_rank() over(order by FTA desc) as FTA_rnk
+from [dbo].[totals]
+
+--who has the highest free throw attempts per game? option 1
+
+select stuff(player,charindex('\',player),len(player),'') as player_name,
+		FTA
+from [dbo].[per_game]
+where FTA in (select max(FTA)
+				from [dbo].[per_game])
+
+--who has the highest free throw attempts per game? option 1
+
+select stuff(player,charindex('\',player),len(player),'') as player_name,
+		FTA,
+		dense_rank() over(order by FTA desc) as FTA_rnk
+from [dbo].[per_game]
